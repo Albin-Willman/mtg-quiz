@@ -3,7 +3,8 @@ import { useState, useCallback } from 'react'
 const SKIP_TYPES = ['Basic Land']
 const RANDOM_BASE_QUERY = '-set_type:commander -set_type:promo -set_type:alchemy'
 
-async function fetchAndValidate(url, signal, skipValidation, excludeIds) {
+async function fetchAndValidate(url, signal, skipValidation, excludeIds, retries = 10) {
+  if (retries <= 0) throw new Error('Could not find a valid card after several attempts')
   const res = await fetch(url, { signal })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
@@ -19,7 +20,7 @@ async function fetchAndValidate(url, signal, skipValidation, excludeIds) {
       SKIP_TYPES.some((t) => data.type_line?.includes(t)) ||
       excludeIds?.has(data.id)
     ) {
-      return fetchAndValidate(url, signal, false, excludeIds)
+      return fetchAndValidate(url, signal, false, excludeIds, retries - 1)
     }
   }
 
