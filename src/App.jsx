@@ -103,9 +103,11 @@ export default function App() {
   const [selectedSet, setSelectedSet] = useState(() =>
     initialQuizInfo?.quizSetCode ? { code: initialQuizInfo.quizSetCode } : null
   )
+  const [selectedType, setSelectedType] = useState(null)
+  const [selectedFormat, setSelectedFormat] = useState(null)
   const [refetchKey, setRefetchKey] = useState(0)
 
-  const { card, loading, error, fetchCard, fetchCardById } = useCard(selectedSet?.code)
+  const { card, loading, error, fetchCard, fetchCardById } = useCard(selectedSet?.code, selectedType, selectedFormat)
 
   // Initial card fetch. quizCardIds[0] is always the right ID when this effect runs
   // because quizCardIndex is always 0 at mount and at quiz-start (handleStartQuiz resets it).
@@ -138,12 +140,14 @@ export default function App() {
   }, [card, quizPhase, quizHistory, quizConfig])
 
   const [guess, setGuess] = useState('')
+  const [checkingGuess, setCheckingGuess] = useState(false)
   const [result, setResult] = useState(null) // null | 'correct' | 'wrong' | 'skipped'
   const [submittedGuess, setSubmittedGuess] = useState('')
   const [clues, setClues] = useState(initClues)
   const [score, setScore] = useState({ points: 0, rounds: 0 })
   const [roundPoints, setRoundPoints] = useState(0)
   const inputRef = useRef(null)
+  const seenCardIdsRef = useRef(new Set())
 
   useEffect(() => {
     if (!loading && result === null && inputRef.current) {
@@ -154,10 +158,13 @@ export default function App() {
   const updateClue = (key, updates) =>
     setClues((prev) => ({ ...prev, [key]: { ...prev[key], ...updates } }))
 
-  const handleStartQuiz = ({ set, cardCount, cardIds = [] }) => {
+  const handleStartQuiz = ({ set, cardCount, type = null, format = null, cardIds = [] }) => {
     setQuizCardIds(cardIds)
-    setQuizConfig({ set, cardCount })
+    setQuizConfig({ set, cardCount, type, format })
     setSelectedSet(set)
+    setSelectedType(type)
+    setSelectedFormat(format)
+    seenCardIdsRef.current = new Set()
     setQuizHistory([])
     setQuizCardIndex(0)
     setScore({ points: 0, rounds: 0 })
@@ -181,13 +188,32 @@ export default function App() {
     setQuizHistory([])
     setQuizCardIndex(0)
     setScore({ points: 0, rounds: 0 })
+    setSelectedType(null)
+    setSelectedFormat(null)
   }
 
-  const submitGuess = (e) => {
+  const submitGuess = async (e) => {
     e.preventDefault()
-    if (!card || result !== null || !guess.trim()) return
+    if (!card || result !== null || !guess.trim() || checkingGuess) return
     const trimmed = guess.trim()
-    const correct = trimmed.toLowerCase() === card.name.toLowerCase()
+
+    let correct = trimmed.toLowerCase() === card.name.toLowerCase()
+    if (!correct) {
+      setCheckingGuess(true)
+      try {
+        const res = await fetch(
+          `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(trimmed)}`
+        )
+        if (res.ok) {
+          const data = await res.json()
+          correct = data.name.toLowerCase() === card.name.toLowerCase()
+        }
+      } catch {
+        // leave correct as false
+      } finally {
+        setCheckingGuess(false)
+      }
+    }
     setSubmittedGuess(trimmed)
     setResult(correct ? 'correct' : 'wrong')
 
@@ -252,7 +278,8 @@ export default function App() {
     if (nextId) {
       fetchCardById(nextId)
     } else {
-      fetchCard()
+      seenCardIdsRef.current.add(card.id)
+      fetchCard(undefined, seenCardIdsRef.current)
     }
   }
 
@@ -266,8 +293,17 @@ export default function App() {
   // Per-clue guess checkers
   const checkManaCost = (g) => {
     if (!manaCost) return false
-    const stripSymbols = (s) => s.replace(/[{}\s]/g, '').toLowerCase()
-    return stripSymbols(g) === stripSymbols(manaCost)
+    // Parse into individual symbols, handling both {X} notation and bare input.
+    // Regex matches: digit/letter hybrid (2/W), letter/letter hybrid (W/U), numbers, single letters.
+    const parseSymbols = (s) => {
+      const bare = s.replace(/\{([^}]+)\}/g, ' $1 ')
+      const tokens = bare.match(/\d+\/[a-z]|[a-z]\/[a-z]|\d+|[a-z]/gi) ?? []
+      return tokens
+        .map((t) => t.toLowerCase().split('/').sort().join('/'))
+        .sort()
+        .join(',')
+    }
+    return parseSymbols(g) === parseSymbols(manaCost)
   }
   const checkType = (g) => norm(g) === norm(card?.type_line ?? '')
   const checkSet = (g) => {
@@ -321,9 +357,14 @@ export default function App() {
           {error && !loading && (
             <div className="state-message error-state">
               <p>{error}</p>
-              <button className="btn-primary" onClick={fetchCard}>
-                Retry
-              </button>
+              <div className="guess-actions">
+                <button className="btn-primary" onClick={fetchCard}>
+                  Retry
+                </button>
+                <button className="btn-ghost" onClick={handleNewQuiz}>
+                  New Quiz
+                </button>
+              </div>
             </div>
           )}
 
@@ -344,6 +385,7 @@ export default function App() {
                   onUpdate={(u) => updateClue('manaCost', u)}
                   checkGuess={checkManaCost}
                   renderValue={() => <ManaSymbols cost={manaCost} />}
+                  helpText="Write each symbol in sequence, e.g. 2UU or WWBB. For hybrid mana, include the slash: W/U for {W/U}."
                 />
                 <ClueButton
                   gameOver={result !== null}
@@ -407,9 +449,9 @@ export default function App() {
                     <button
                       type="submit"
                       className="btn-primary"
-                      disabled={!guess.trim()}
+                      disabled={!guess.trim() || checkingGuess}
                     >
-                      Guess
+                      {checkingGuess ? 'Checking…' : 'Guess'}
                     </button>
                     <button type="button" className="btn-ghost" onClick={giveUp}>
                       Give Up

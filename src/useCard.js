@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react'
 const SKIP_TYPES = ['Basic Land']
 const RANDOM_BASE_QUERY = '-set_type:commander -set_type:promo -set_type:alchemy'
 
-async function fetchAndValidate(url, signal, skipValidation) {
+async function fetchAndValidate(url, signal, skipValidation, excludeIds) {
   const res = await fetch(url, { signal })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
@@ -14,29 +14,33 @@ async function fetchAndValidate(url, signal, skipValidation) {
   if (!skipValidation) {
     const artUrl =
       data.image_uris?.art_crop ?? data.card_faces?.[0]?.image_uris?.art_crop
-    if (!artUrl || SKIP_TYPES.some((t) => data.type_line?.includes(t))) {
-      return fetchAndValidate(url, signal, false)
+    if (
+      !artUrl ||
+      SKIP_TYPES.some((t) => data.type_line?.includes(t)) ||
+      excludeIds?.has(data.id)
+    ) {
+      return fetchAndValidate(url, signal, false, excludeIds)
     }
   }
 
   return data
 }
 
-export default function useCard(setCode) {
+export default function useCard(setCode, cardType, cardFormat) {
   const [card, setCard] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
   const fetchCard = useCallback(
-    async (signal) => {
+    async (signal, excludeIds) => {
       setLoading(true)
       setError(null)
       try {
-        const q = setCode
-          ? `set:${setCode}`
-          : RANDOM_BASE_QUERY
+        let q = setCode ? `set:${setCode}` : RANDOM_BASE_QUERY
+        if (cardType) q += ` type:${cardType}`
+        if (cardFormat) q += ` f:${cardFormat}`
         const url = `https://api.scryfall.com/cards/random?q=${encodeURIComponent(q)}`
-        const data = await fetchAndValidate(url, signal, false)
+        const data = await fetchAndValidate(url, signal, false, excludeIds)
         if (signal?.aborted) return
         setCard(data)
       } catch (e) {
@@ -46,7 +50,7 @@ export default function useCard(setCode) {
         if (!signal?.aborted) setLoading(false)
       }
     },
-    [setCode],
+    [setCode, cardType, cardFormat],
   )
 
   const fetchCardById = useCallback(async (id, signal) => {
