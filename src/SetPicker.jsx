@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import useSets from './useSets'
 
-export default function SetPicker({ value, onChange }) {
+export default function SetPicker({ value, onChange, disabled }) {
   const { sets, loading } = useSets()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -64,7 +64,7 @@ export default function SetPicker({ value, onChange }) {
           onChange={handleInputChange}
           onFocus={handleFocus}
           placeholder={loading ? 'Loading sets…' : 'All sets'}
-          disabled={loading}
+          disabled={loading || disabled}
           autoComplete="off"
           spellCheck={false}
         />
