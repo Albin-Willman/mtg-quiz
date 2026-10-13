@@ -1,8 +1,9 @@
-import { useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
-export default function ClueButton({ label, checkGuess, renderValue, state, onUpdate, wide, gameOver }) {
+export default function ClueButton({ label, checkGuess, renderValue, state, onUpdate, wide, gameOver, helpText }) {
   const { status, lastGuess, inputVal } = state
   const inputRef = useRef(null)
+  const [showHelp, setShowHelp] = useState(false)
 
   useEffect(() => {
     if (status === 'guessing') inputRef.current?.focus()
@@ -51,6 +52,16 @@ export default function ClueButton({ label, checkGuess, renderValue, state, onUp
             autoComplete="off"
             spellCheck={false}
           />
+          {helpText && (
+            <button
+              type="button"
+              className={`clue-action-btn clue-action-btn--help${showHelp ? ' clue-action-btn--help-active' : ''}`}
+              onClick={() => setShowHelp((v) => !v)}
+              title="Help"
+            >
+              ?
+            </button>
+          )}
           <button
             type="submit"
             className="clue-action-btn clue-action-btn--confirm"
@@ -68,6 +79,7 @@ export default function ClueButton({ label, checkGuess, renderValue, state, onUp
             ↓
           </button>
         </form>
+        {showHelp && <p className="clue-help-text">{helpText}</p>}
       </div>
     )
   }
