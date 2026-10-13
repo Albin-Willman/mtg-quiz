@@ -94,6 +94,7 @@ export default function App() {
       ? {
           set: initialQuizInfo.quizSetCode ? { code: initialQuizInfo.quizSetCode } : null,
           cardCount: initialQuizInfo.quizCount,
+          cardIds: initialQuizInfo.quizIds,
         }
       : { set: null, cardCount: 10 }
   )
@@ -160,7 +161,7 @@ export default function App() {
 
   const handleStartQuiz = ({ set, cardCount, type = null, format = null, cardIds = [] }) => {
     setQuizCardIds(cardIds)
-    setQuizConfig({ set, cardCount, type, format })
+    setQuizConfig({ set, cardCount, type, format, cardIds })
     setSelectedSet(set)
     setSelectedType(type)
     setSelectedFormat(format)
@@ -257,6 +258,12 @@ export default function App() {
     setClues(revealAllClues)
   }
 
+  const retry = () => {
+    const id = quizCardIds[quizCardIndex]
+    if (id) fetchCardById(id)
+    else fetchCard(undefined, seenCardIdsRef.current)
+  }
+
   const next = () => {
     const maxPts = selectedSet ? 12 : 14
     const record = { cardName: card.name, cardId: card.id, result, roundPoints, maxPoints: maxPts }
@@ -287,6 +294,10 @@ export default function App() {
     card?.image_uris?.art_crop ?? card?.card_faces?.[0]?.image_uris?.art_crop
   const manaCost =
     card?.mana_cost ?? card?.card_faces?.[0]?.mana_cost
+  const power =
+    card?.power ?? card?.card_faces?.[0]?.power
+  const toughness =
+    card?.toughness ?? card?.card_faces?.[0]?.toughness
   const oracleText =
     card?.oracle_text ?? card?.card_faces?.map((f) => f.oracle_text).join('\n—\n')
 
@@ -311,8 +322,8 @@ export default function App() {
     return lower === (card?.set_name ?? '').toLowerCase() ||
            lower === (card?.set ?? '').toLowerCase()
   }
-  const checkPower     = (g) => g.trim() === (card?.power     ?? '-')
-  const checkToughness = (g) => g.trim() === (card?.toughness ?? '-')
+  const checkPower     = (g) => g.trim() === (power     ?? '-')
+  const checkToughness = (g) => g.trim() === (toughness ?? '-')
   const checkRules = (g) => {
     if (!oracleText) return false
     return norm(g) === norm(oracleText)
@@ -358,7 +369,7 @@ export default function App() {
             <div className="state-message error-state">
               <p>{error}</p>
               <div className="guess-actions">
-                <button className="btn-primary" onClick={fetchCard}>
+                <button className="btn-primary" onClick={retry}>
                   Retry
                 </button>
                 <button className="btn-ghost" onClick={handleNewQuiz}>
@@ -401,7 +412,7 @@ export default function App() {
                   state={clues.power}
                   onUpdate={(u) => updateClue('power', u)}
                   checkGuess={checkPower}
-                  renderValue={() => card.power ?? '-'}
+                  renderValue={() => power ?? '-'}
                 />
                 <ClueButton
                   gameOver={result !== null}
@@ -409,7 +420,7 @@ export default function App() {
                   state={clues.toughness}
                   onUpdate={(u) => updateClue('toughness', u)}
                   checkGuess={checkToughness}
-                  renderValue={() => card.toughness ?? '-'}
+                  renderValue={() => toughness ?? '-'}
                 />
                 {!selectedSet && (
                   <ClueButton

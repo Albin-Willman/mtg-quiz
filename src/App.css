@@ -818,6 +818,11 @@
   gap: 0.5rem;
 }
 
+.clue-wrong-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
 .clue-sm-btn {
   background: none;
   border: 1px solid var(--border);

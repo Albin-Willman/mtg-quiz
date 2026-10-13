@@ -76,14 +76,23 @@ export default function ClueButton({ label, checkGuess, renderValue, state, onUp
     return (
       <div className={cls}>
         <span className="clue-wrong-label">✗ &ldquo;{lastGuess}&rdquo;</span>
-        <span className="clue-value clue-value--answer">{renderValue()}</span>
-        {!gameOver && (
-          <button
-            className="clue-sm-btn"
-            onClick={() => onUpdate({ status: 'guessing', inputVal: '' })}
-          >
-            Try again
-          </button>
+        {gameOver ? (
+          <span className="clue-value clue-value--answer">{renderValue()}</span>
+        ) : (
+          <div className="clue-wrong-actions">
+            <button
+              className="clue-sm-btn"
+              onClick={() => onUpdate({ status: 'guessing', inputVal: '' })}
+            >
+              Try again
+            </button>
+            <button
+              className="clue-sm-btn"
+              onClick={() => onUpdate({ status: 'revealed' })}
+            >
+              Reveal
+            </button>
+          </div>
         )}
       </div>
     )
