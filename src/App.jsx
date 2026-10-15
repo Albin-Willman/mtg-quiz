@@ -5,6 +5,7 @@ import ClueButton from './ClueButton'
 import QuizSetup from './QuizSetup'
 import QuizSummary from './QuizSummary'
 import QuizBuilder from './QuizBuilder'
+import { matchRules, describeRulesMatch } from './rulesMatch'
 import './App.css'
 
 const initClues = () => ({
@@ -324,10 +325,7 @@ export default function App() {
   }
   const checkPower     = (g) => g.trim() === (power     ?? '-')
   const checkToughness = (g) => g.trim() === (toughness ?? '-')
-  const checkRules = (g) => {
-    if (!oracleText) return false
-    return norm(g) === norm(oracleText)
-  }
+  const checkRules = (g) => matchRules(g, oracleText, card).correct
 
   const isLastCard = quizCardIndex + 1 >= quizConfig.cardCount
 
@@ -440,6 +438,8 @@ export default function App() {
                   state={clues.rules}
                   onUpdate={(u) => updateClue('rules', u)}
                   checkGuess={checkRules}
+                  feedback={(g) => describeRulesMatch(matchRules(g, oracleText, card))}
+                  helpText="Write the full rules text. Reminder text, punctuation and capitalization are ignored, and you can write the card's name as ~. Short texts must match exactly, longer ones 80% word for word, and every number and keyword must be right. Write none for cards without rules text."
                   renderValue={() => renderObfuscatedRules(oracleText, card)}
                 />
               </div>

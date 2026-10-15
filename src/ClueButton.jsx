@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 
-export default function ClueButton({ label, checkGuess, renderValue, state, onUpdate, wide, gameOver, helpText }) {
+export default function ClueButton({ label, checkGuess, renderValue, state, onUpdate, wide, gameOver, helpText, feedback }) {
   const { status, lastGuess, inputVal } = state
   const inputRef = useRef(null)
   const [showHelp, setShowHelp] = useState(false)
@@ -88,6 +88,7 @@ export default function ClueButton({ label, checkGuess, renderValue, state, onUp
     return (
       <div className={cls}>
         <span className="clue-wrong-label">✗ &ldquo;{lastGuess}&rdquo;</span>
+        {feedback && <span className="clue-feedback">{feedback(lastGuess)}</span>}
         {gameOver ? (
           <span className="clue-value clue-value--answer">{renderValue()}</span>
         ) : (

@@ -880,6 +880,11 @@
   color: var(--error);
 }
 
+.clue-feedback {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
 .clue-wrong-actions {
   display: flex;
   gap: 0.5rem;
